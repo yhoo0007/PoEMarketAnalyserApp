@@ -80,7 +80,6 @@ def create_figures():
         rows.append(html.Div(row, style={'display': 'flex'}))
     return rows
 
-
 @app.callback(
     Output('figures-container', 'children'),
     Input('item-selector', 'value'),
@@ -127,6 +126,8 @@ def update_fig(*args):
     return [
         get_figure(data, data.columns[i], data.columns[0], selected_points)
     for i in range(1, len(data.columns))]
+
+create_stash_processor_thread()
 
 if __name__ == '__main__':
     create_stash_processor_thread()
