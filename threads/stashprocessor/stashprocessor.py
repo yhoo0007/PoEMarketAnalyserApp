@@ -150,7 +150,7 @@ class StashProcessor(Thread):
         print(f'[{self.name}]: {msg}')
 
     def run(self):
-        self.log('Starting stash processor')
+        self.log('Starting')
         tracking_uniques = self.get_tracking_uniques()
         listings = {unique: {} for unique in tracking_uniques}
         next_change_id = self.fetch_next_change_id()
@@ -187,3 +187,4 @@ class StashProcessor(Thread):
                     time.sleep(max(delay, 0))
         except Exception as e:
             self.log(e)
+        self.log('Terminating')
