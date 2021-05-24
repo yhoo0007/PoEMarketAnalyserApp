@@ -11,6 +11,7 @@ import json
 import time
 import itertools
 import re
+import pathlib
 
 
 class StashProcessor(Thread):
@@ -51,6 +52,7 @@ class StashProcessor(Thread):
         '''
         if not os.path.exists(TRACKING_UNIQUES_FILE) or use_cache:
             uniques = self.fetch_tracking_uniques()
+            pathlib.Path(os.path.split(TRACKING_UNIQUES_FILE)[0]).mkdir(parents=True, exist_ok=True)
             with open(TRACKING_UNIQUES_FILE, 'w+') as tracking_uniques_file:
                 json.dump(uniques, tracking_uniques_file, indent=2)
         else:
@@ -139,6 +141,8 @@ class StashProcessor(Thread):
             json_obj = listings
 
         # Dump to file
+        if not os.path.exists(file_path):
+            pathlib.Path(os.path.split(file_path)[0]).mkdir(parents=True, exist_ok=True)
         with open(file_path, 'w+') as json_file:
             json.dump(json_obj, json_file, indent=2)
 

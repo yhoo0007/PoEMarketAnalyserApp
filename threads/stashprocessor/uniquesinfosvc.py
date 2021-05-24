@@ -1,3 +1,4 @@
+import pathlib
 from config.shared import LEAGUE_CAP
 from config.stashprocessor import POE_NINJA_ITEM_OVERVIEW_URL, POE_NINJA_LANG, UNIQUES_DATA_FILE
 import os
@@ -20,6 +21,8 @@ class UniquesInfoSvc:
                 uniques = json.load(uniques_data_file)
         else:
             uniques = self.fetch_uniques_data()
+            if not os.path.exists(UNIQUES_DATA_FILE):
+                pathlib.Path(os.path.split(UNIQUES_DATA_FILE)[0]).mkdir(parents=True, exist_ok=True)
             with open(UNIQUES_DATA_FILE, 'w+') as uniques_data_file:
                 json.dump(uniques, uniques_data_file, indent=2)
         return uniques
