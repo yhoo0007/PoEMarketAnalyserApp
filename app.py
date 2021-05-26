@@ -1,8 +1,6 @@
 from config.shared import FIREBASE_CONFIG
 from dash.dependencies import ALL, Input, Output, State
 from pyrebase.pyrebase import Firebase
-from config.stashprocessor import LISTINGS_DIR, UNIQUES_BLACKLIST
-import os
 from threads.stashprocessor.stashprocessor import StashProcessor
 import dash
 import dash_core_components as dcc
@@ -16,14 +14,14 @@ database = Firebase(FIREBASE_CONFIG).database()
 data = None
 
 def create_item_selector():
-    for _, _, files in os.walk(LISTINGS_DIR):
-        item_selector = dcc.Dropdown(
-            id='item-selector',
-            options=[
-                {'label': item_name, 'value': item_name}
-            for item_name, _ in map(os.path.splitext, files) if item_name not in UNIQUES_BLACKLIST]
-        )
-        return item_selector
+    item_names = [value.key() for value in database.child('StashProcessor').child('listings').get().each()]
+    item_selector = dcc.Dropdown(
+        id='item-selector',
+        options=[
+            {'label': item_name, 'value': item_name}
+        for item_name in item_names]
+    )
+    return item_selector
 
 def create_app():
     external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
