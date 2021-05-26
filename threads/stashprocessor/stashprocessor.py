@@ -177,6 +177,7 @@ class StashProcessor(Thread):
                     delay = next_request_time - current_time
                     time.sleep(max(delay, 0))
             except Exception:
+                self.log('Saving listings to Firebase')
                 for item in items:
                     item_name = item['name']
                     self.save_to_db(item_name, listings[item_name])
