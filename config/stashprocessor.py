@@ -3,7 +3,7 @@ import os
 
 
 NUM_TRACKING_UNIQUES = 30  # number of uniques to scan for
-DUMP_THRESHOLD = 20  # number of items in dict before updating to disk
+DUMP_THRESHOLD = 5  # number of items in dict before updating to disk
 LISTINGS_DIR = os.path.join(DATA_DIR, 'listings')
 UNIQUES_DATA_FILE = os.path.join(DATA_DIR, 'uniques.json')
 TRACKING_UNIQUES_FILE = os.path.join(DATA_DIR, 'tracking_uniques.json')
@@ -22,6 +22,7 @@ UNIQUES_BLACKLIST = (
     'Conqueror\'s Efficiency',
     'Essence Worm',
     'Might of the Meek',
+    'Militant Faith',
     
 )
 
