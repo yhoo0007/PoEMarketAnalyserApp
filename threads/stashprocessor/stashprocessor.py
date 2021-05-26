@@ -152,10 +152,11 @@ class StashProcessor(Thread):
                 accepted_items = 0
                 dumps = 0
                 processing_time = time.time()
-                for item in filter(
+                items = filter(
                     lambda item: self.item_is_acceptable(item, tracking_uniques),
                     itertools.chain.from_iterable(map(lambda stash: stash['items'], stash_data))
-                ):
+                )
+                for item in items:
                     if (price := self.extract_price(item['note'])) is not None:
                         cleaned_item = self.clean_item(item, price)
                         item_name = item['name']
@@ -176,5 +177,8 @@ class StashProcessor(Thread):
                     delay = next_request_time - current_time
                     time.sleep(max(delay, 0))
             except Exception:
+                for item in items:
+                    item_name = item['name']
+                    self.save_to_db(item_name, listings[item_name])
                 self.log(item)
                 self.log(traceback.format_exc())
