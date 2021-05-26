@@ -1,27 +1,27 @@
+from pyrebase.pyrebase import Firebase
 from threads.stashprocessor.uniquesinfosvc import UniquesInfoSvc
 from threads.stashprocessor.currencyexchange import CurrencyExchange
 from threads.stashprocessor.structs import Item, ItemUse
-from config.shared import DEFAULT_POE_HEADERS, LEAGUE
-from config.stashprocessor import DUMP_THRESHOLD, LISTINGS_DIR, NUM_TRACKING_UNIQUES, POE_NINJA_BUILD_OVERVIEW_URL, POE_NINJA_LADDER, POE_NINJA_LANG, POE_NINJA_STATS_URL, PUBLIC_STASH_URL, TRACKING_UNIQUES_FILE, UNIQUES_BLACKLIST, UNIQUES_DATA_FILE
+from config.shared import DEFAULT_POE_HEADERS, FIREBASE_CONFIG, LEAGUE
+from config.stashprocessor import DUMP_THRESHOLD, NUM_TRACKING_UNIQUES, POE_NINJA_BUILD_OVERVIEW_URL, POE_NINJA_LADDER, POE_NINJA_LANG, POE_NINJA_STATS_URL, PUBLIC_STASH_URL, UNIQUES_BLACKLIST
 from threading import Thread
 import requests
 import heapq
-import os
-import json
 import time
 import itertools
 import re
-import pathlib
+import traceback
 
 
 class StashProcessor(Thread):
     def __init__(self):
         super().__init__()
-        self.name = 'Stash Processor'
+        self.name = 'StashProcessor'
+        self.database = Firebase(FIREBASE_CONFIG).database().child(self.name)
         self.currency_exchange = CurrencyExchange()
         self.uniques_data_svc = UniquesInfoSvc()
 
-    def fetch_tracking_uniques(self, n=NUM_TRACKING_UNIQUES):
+    def fetch_tracking_uniques_src(self):
         '''
         Fetch n most or least used unique items from poeninja. Returns a list of item names.
         '''
@@ -42,23 +42,27 @@ class StashProcessor(Thread):
                     heap,
                     ItemUse(len(unique_item_use[str(index)]), Item(item['name'], item['type']))
                 )
-        item_uses = heapq.nlargest(n, heap) if n >= 0 else heapq.nsmallest(n, heap)
+        item_uses = heapq.nlargest(NUM_TRACKING_UNIQUES, heap) if NUM_TRACKING_UNIQUES >= 0 else heapq.nsmallest(NUM_TRACKING_UNIQUES, heap)
         uniques = [item_use.item.name for item_use in item_uses]
         return uniques
 
-    def get_tracking_uniques(self, use_cache=True):
+    def fetch_tracking_uniques_db(self):
+        '''
+        Fetch tracking uniques from Firebase. Returns a list of item names.
+        '''
+        uniques = self.database.child('trackingUniques').get().val()
+        return uniques
+
+    def get_tracking_uniques(self):
         '''
         Gets the tracking uniques from cache or poeninja. Returns a list of item names.
         '''
-        if not os.path.exists(TRACKING_UNIQUES_FILE) or use_cache:
-            uniques = self.fetch_tracking_uniques()
-            pathlib.Path(os.path.split(TRACKING_UNIQUES_FILE)[0]).mkdir(parents=True, exist_ok=True)
-            with open(TRACKING_UNIQUES_FILE, 'w+') as tracking_uniques_file:
-                json.dump(uniques, tracking_uniques_file, indent=2)
-        else:
-            with open(TRACKING_UNIQUES_FILE) as tracking_uniques_file:
-                uniques = json.load(tracking_uniques_file)
-        return uniques
+        tracking_uniques = self.fetch_tracking_uniques_db()
+        if tracking_uniques is None:
+            self.log('No existing tracking uniques found in Firebase, fetching from source')
+            tracking_uniques = self.fetch_tracking_uniques_src()
+            self.database.child(self.name).child('trackingUniques').set(tracking_uniques)
+        return tracking_uniques
 
     def fetch_next_change_id(self):
         return requests.get(POE_NINJA_STATS_URL).json()['next_change_id']
@@ -109,7 +113,7 @@ class StashProcessor(Thread):
         explicitModifiers = item.get('explicitMods', [])
         if len(explicitModifiers) > 0:
             explicitModifiers = [{
-                item_info_mod['text']: sum(self.extract_modifier_values(item_mod))
+                item_info_mod['text'].replace('\n', ' '): sum(self.extract_modifier_values(item_mod))
             }
             for item_mod, item_info_mod in zip(
                 explicitModifiers, item_info['explicitModifiers']
@@ -117,7 +121,7 @@ class StashProcessor(Thread):
         implicitModifiers = item.get('implicitMods', [])
         if len(implicitModifiers) > 0:
             implicitModifiers = [{
-                item_info_mod['text']: sum(self.extract_modifier_values(item_mod))
+                item_info_mod['text'].replace('\n', ' '): sum(self.extract_modifier_values(item_mod))
             }
             for item_mod, item_info_mod in zip(
                 implicitModifiers, item_info['implicitModifiers']
@@ -129,22 +133,8 @@ class StashProcessor(Thread):
             'price': price,
         }
     
-    def update_file(self, name, listings):
-        file_path = os.path.join(LISTINGS_DIR, f'{name}.json')
-
-        # Update existing file if possible, else write instances as new file
-        if os.path.exists(file_path):
-            with open(file_path) as json_file:
-                json_obj = json.load(json_file)
-            json_obj.update(listings)
-        else:
-            json_obj = listings
-
-        # Dump to file
-        if not os.path.exists(file_path):
-            pathlib.Path(os.path.split(file_path)[0]).mkdir(parents=True, exist_ok=True)
-        with open(file_path, 'w+') as json_file:
-            json.dump(json_obj, json_file, indent=2)
+    def save_to_db(self, name, listings):
+        self.database.child(self.name).child('listings').child(name).set(listings)
 
     def log(self, msg):
         print(f'[{self.name}]: {msg}')
@@ -154,8 +144,8 @@ class StashProcessor(Thread):
         tracking_uniques = self.get_tracking_uniques()
         listings = {unique: {} for unique in tracking_uniques}
         next_change_id = self.fetch_next_change_id()
-        try:
-            while True:
+        while True:
+            try:
                 next_request_time = time.time() + 0.51
                 stash_data = self.fetch_stash_data(next_change_id)
 
@@ -171,7 +161,7 @@ class StashProcessor(Thread):
                         item_name = item['name']
                         listings[item_name][item['id']] = cleaned_item
                         if len(listings[item_name]) > DUMP_THRESHOLD:
-                            self.update_file(item_name, listings[item_name])
+                            self.save_to_db(item_name, listings[item_name])
                             listings[item_name] = {}
                             dumps += 1
                         accepted_items += 1
@@ -185,6 +175,6 @@ class StashProcessor(Thread):
                     next_change_id = stash_data['next_change_id']
                     delay = next_request_time - current_time
                     time.sleep(max(delay, 0))
-        except Exception as e:
-            self.log(e)
-        self.log('Terminating')
+            except Exception:
+                self.log(item)
+                self.log(traceback.format_exc())

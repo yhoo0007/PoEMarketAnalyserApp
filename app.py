@@ -1,5 +1,6 @@
-import json
+from config.shared import FIREBASE_CONFIG
 from dash.dependencies import ALL, Input, Output, State
+from pyrebase.pyrebase import Firebase
 from config.stashprocessor import LISTINGS_DIR, UNIQUES_BLACKLIST
 import os
 from threads.stashprocessor.stashprocessor import StashProcessor
@@ -11,6 +12,7 @@ import pandas as pd
 import plotly.express as px
 
 
+database = Firebase(FIREBASE_CONFIG).database()
 data = None
 
 def create_item_selector():
@@ -43,25 +45,24 @@ app = create_app()
 server = app.server
 
 def load_data(item_name):
-    with open(os.path.join(LISTINGS_DIR, item_name + '.json')) as json_file:
-        json_data = json.load(json_file)
-        dict_ = {}
-        for item in filter(lambda item: not item['corrupted'], json_data.values()):
-            if 'price' not in dict_:
-                dict_['price'] = []
-            dict_['price'].append(item['price'])
-            for mod in item['explicitMods'] + item['implicitMods']:
-                key, = mod.keys()
-                value, = mod.values()
-                if key not in dict_:
-                    dict_[key] = []
-                dict_[key].append(value)
-        try:
-            df = pd.DataFrame.from_dict(dict_)
-        except ValueError:
-            print('Inconsistent number of mods!')
-            return data
-        return df
+    dict_ = {}
+    json_data = database.child('StashProcessor').child('listings').child(item_name).get().val()
+    for item in filter(lambda item: not item['corrupted'], json_data.values()):
+        if 'price' not in dict_:
+            dict_['price'] = []
+        dict_['price'].append(item['price'])
+        for mod in item.get('explicitMods', []) + item.get('implicitMods', []):
+            key, = mod.keys()
+            value, = mod.values()
+            if key not in dict_:
+                dict_[key] = []
+            dict_[key].append(value)
+    try:
+        df = pd.DataFrame.from_dict(dict_)
+    except ValueError:
+        print('Inconsistent number of mods!')
+        return data
+    return df
 
 def create_figures():
     FIGS_PER_ROW = 2
@@ -90,6 +91,7 @@ def item_selected(value, children):
     print(f'{value} selected')
     if value:
         data = load_data(value)
+        print(f'{len(data)} number of listings found')
         figures = create_figures()
         children = figures
     return children
@@ -130,5 +132,4 @@ def update_fig(*args):
 create_stash_processor_thread()
 
 if __name__ == '__main__':
-    create_stash_processor_thread()
     app.run_server()

@@ -1,30 +1,25 @@
-import pathlib
-from config.shared import LEAGUE_CAP
-from config.stashprocessor import POE_NINJA_ITEM_OVERVIEW_URL, POE_NINJA_LANG, UNIQUES_DATA_FILE
-import os
+from pyrebase.pyrebase import Firebase
+from config.shared import FIREBASE_CONFIG, LEAGUE_CAP
+from config.stashprocessor import POE_NINJA_ITEM_OVERVIEW_URL, POE_NINJA_LANG
 import re
 import requests
-import json
 
 
 class UniquesInfoSvc:
     def __init__(self):
         self.name = 'UniquesInfoSvc'
+        self.database = Firebase(FIREBASE_CONFIG).database().child(self.name)
         self._uniques_info = self.get_uniques_info()
 
     def log(self, msg):
         print(f'[{self.name}]: {msg}')
 
     def get_uniques_info(self):
-        if os.path.exists(UNIQUES_DATA_FILE):
-            with open(UNIQUES_DATA_FILE) as uniques_data_file:
-                uniques = json.load(uniques_data_file)
-        else:
-            uniques = self.fetch_uniques_data()
-            if not os.path.exists(UNIQUES_DATA_FILE):
-                pathlib.Path(os.path.split(UNIQUES_DATA_FILE)[0]).mkdir(parents=True, exist_ok=True)
-            with open(UNIQUES_DATA_FILE, 'w+') as uniques_data_file:
-                json.dump(uniques, uniques_data_file, indent=2)
+        uniques = self.fetch_uniques_data_db()
+        if uniques is None:
+            self.log('No existing uniques data found in Firebase, fetching from source')
+            uniques = self.fetch_uniques_data_src()
+            self.database.update(uniques)
         return uniques
 
     def flatten_lines(self, lines):
@@ -59,7 +54,22 @@ class UniquesInfoSvc:
         for r in ranges])
         return constant
 
-    def fetch_uniques_data(self):
+    def fetch_uniques_data_db(self):
+        uniques = self.database.get().val()
+        # Re-create fields in case they are empty because FB does not store empty fields -_-
+        for category_items in uniques.values():
+            for item in category_items.values():
+                if 'implicitModifiers' not in item:
+                    item['implicitModifiers'] = []
+                if 'explicitModifiers' not in item:
+                    item['explicitModifiers'] = []
+                if 'links' not in item:
+                    item['links'] = None
+                if 'mapTier' not in item:
+                    item['mapTier'] = None
+        return uniques
+
+    def fetch_uniques_data_src(self):
         UNIQUE_ITEM_TYPES = {
             'UniqueAccessory': 'accessories',
             'UniqueArmour': 'armour',
