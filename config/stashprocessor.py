@@ -23,6 +23,7 @@ UNIQUES_BLACKLIST = (
     'Essence Worm',
     'Might of the Meek',
     'Militant Faith',
+    'Lethal Pride',
     
 )
 
