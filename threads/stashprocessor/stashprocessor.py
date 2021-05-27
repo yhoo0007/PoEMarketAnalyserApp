@@ -20,6 +20,8 @@ class StashProcessor(Thread):
         self.database = Firebase(FIREBASE_CONFIG).database().child(self.name)
         self.currency_exchange = CurrencyExchange()
         self.uniques_data_svc = UniquesInfoSvc()
+        self.tracking_uniques = self.get_tracking_uniques()
+        self.listings = {unique: {} for unique in self.tracking_uniques}
 
     def fetch_tracking_uniques_src(self):
         '''
@@ -132,9 +134,9 @@ class StashProcessor(Thread):
             'implicitMods': implicitModifiers,
             'price': price,
         }
-    
-    def save_to_db(self, name, listings):
-        self.database.child(self.name).child('listings').child(name).set(listings)
+
+    def save_listings_to_db(self, item):
+        self.database.child(self.name).child('listings').child(item).update(self.listings[item])
 
     def log(self, msg):
         print(f'[{self.name}]: {msg}')
@@ -143,6 +145,7 @@ class StashProcessor(Thread):
         self.log('Starting')
         tracking_uniques = self.get_tracking_uniques()
         listings = {unique: {} for unique in tracking_uniques}
+        self.listings = {unique: {} for unique in self.tracking_uniques}
         next_change_id = self.fetch_next_change_id()
         while True:
             try:
@@ -153,17 +156,17 @@ class StashProcessor(Thread):
                 dumps = 0
                 processing_time = time.time()
                 items = filter(
-                    lambda item: self.item_is_acceptable(item, tracking_uniques),
+                    lambda item: self.item_is_acceptable(item, self.tracking_uniques),
                     itertools.chain.from_iterable(map(lambda stash: stash['items'], stash_data))
                 )
                 for item in items:
                     if (price := self.extract_price(item['note'])) is not None:
                         cleaned_item = self.clean_item(item, price)
                         item_name = item['name']
-                        listings[item_name][item['id']] = cleaned_item
-                        if len(listings[item_name]) > DUMP_THRESHOLD:
-                            self.save_to_db(item_name, listings[item_name])
-                            listings[item_name] = {}
+                        self.listings[item_name][item['id']] = cleaned_item
+                        if len(self.listings[item_name]) > DUMP_THRESHOLD:
+                            self.save_listings_to_db(item_name)
+                            self.listings[item_name] = {}
                             dumps += 1
                         accepted_items += 1
                 processing_time = time.time() - processing_time
@@ -177,9 +180,8 @@ class StashProcessor(Thread):
                     delay = next_request_time - current_time
                     time.sleep(max(delay, 0))
             except Exception:
-                self.log('Saving listings to Firebase')
-                for item in items:
-                    item_name = item['name']
-                    self.save_to_db(item_name, listings[item_name])
                 self.log(item)
                 self.log(traceback.format_exc())
+                self.log('Saving listings to Firebase')
+                for item in self.tracking_uniques:
+                    self.save_listings_to_db(item)
