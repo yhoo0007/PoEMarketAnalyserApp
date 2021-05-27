@@ -11,13 +11,11 @@ import time
 import itertools
 import re
 import traceback
-import signal
 
 
 class StashProcessor(Thread):
     def __init__(self):
         super().__init__()
-        signal.signal(signal.SIGTERM, self.terminate)
         self.name = 'StashProcessor'
         self.database = Firebase(FIREBASE_CONFIG).database().child(self.name)
         self.currency_exchange = CurrencyExchange()
@@ -142,11 +140,6 @@ class StashProcessor(Thread):
 
     def log(self, msg):
         print(f'[{self.name}]: {msg}')
-
-    def terminate(self):
-        self.log('Terminating')
-        for item in self.tracking_uniques:
-            self.save_listings_to_db(item)
 
     def run(self):
         self.log('Starting')
