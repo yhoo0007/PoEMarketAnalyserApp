@@ -89,7 +89,7 @@ def item_selected(value, children):
     print(f'{value} selected')
     if value:
         data = load_data(value)
-        print(f'{len(data)} number of listings found')
+        print(f'{len(data)} listings found')
         figures = create_figures()
         children = figures
     return children
