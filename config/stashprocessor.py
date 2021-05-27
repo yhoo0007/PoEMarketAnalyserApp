@@ -24,7 +24,12 @@ UNIQUES_BLACKLIST = (
     'Might of the Meek',
     'Militant Faith',
     'Lethal Pride',
-    
+    'Inspired Learning',
+    'The Anima Stone',
+    'Thread of Hope',
+    'Transcendent Flesh',
+    'Transcendent Mind',
+    'Unnatural Instinct',
 )
 
 PUBLIC_STASH_URL = 'http://www.pathofexile.com/api/public-stash-tabs'
