@@ -59,12 +59,12 @@ def load_data(item_name):
         df = pd.DataFrame.from_dict(dict_)
     except ValueError:
         print('Inconsistent number of mods!')
-        return data
+        return data  # return old(existing) data
     return df
 
-def create_figures():
+def create_figures(num_columns):
     FIGS_PER_ROW = 2
-    num_figs = len(data.columns) - 1
+    num_figs = num_columns - 1
     num_rows = math.ceil(num_figs / FIGS_PER_ROW)
     fig_width = math.floor(100 / FIGS_PER_ROW)
 
@@ -84,15 +84,16 @@ def create_figures():
     Input('item-selector', 'value'),
     State('figures-container', 'children'),
 )
-def item_selected(value, children):
+def item_selected(value, current_figures):
     global data
     print(f'{value} selected')
     if value:
-        data = load_data(value)
+        new_data = load_data(value)
+        new_figures = create_figures(len(new_data.columns)) or current_figures
+        data = new_data
         print(f'{len(data)} listings found')
-        figures = create_figures()
-        children = figures
-    return children
+        return new_figures
+    return current_figures
 
 @app.callback(
     Output({'type': 'figure', 'index': ALL}, 'figure'),
