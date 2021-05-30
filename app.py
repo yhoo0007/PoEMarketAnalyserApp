@@ -89,7 +89,7 @@ def item_selected(value, current_figures):
     print(f'{value} selected')
     if value:
         new_data = load_data(value)
-        new_figures = create_figures(len(new_data.columns)) or current_figures
+        new_figures = create_figures(len(new_data.columns))
         data = new_data
         print(f'{len(data)} listings found')
         return new_figures
@@ -109,7 +109,7 @@ def update_fig(*args):
             selectedpoints=selectedpoints,
             customdata=df.index,
             mode='markers',
-            marker={ 'color': 'rgba(255, 0, 0, 0.7)', 'size': 10 },
+            marker={ 'color': 'rgba(255, 0, 0, 0.2)', 'size': 10 },
             unselected={
                 'marker': {
                     'color': 'rgba(0, 116, 217, 0.2)',
