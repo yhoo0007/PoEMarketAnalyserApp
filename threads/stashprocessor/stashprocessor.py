@@ -60,8 +60,14 @@ class StashProcessor(Thread):
         Gets the tracking uniques from cache or poeninja. Returns a list of item names.
         '''
         tracking_uniques = self.fetch_tracking_uniques_db()
+        fetch = False
         if tracking_uniques is None:
             self.log('No existing tracking uniques found in Firebase, fetching from source')
+            fetch = True
+        elif len(tracking_uniques) != NUM_TRACKING_UNIQUES:
+            self.log('Number of tracking uniques is different from cache, fetching from source')
+            fetch = True
+        if fetch:
             tracking_uniques = self.fetch_tracking_uniques_src()
             self.database.child(self.name).child('trackingUniques').set(tracking_uniques)
         return tracking_uniques
