@@ -30,6 +30,7 @@ UNIQUES_BLACKLIST = (
     'Transcendent Flesh',
     'Transcendent Mind',
     'Unnatural Instinct',
+    'Circle of Fear',
 )
 
 PUBLIC_STASH_URL = 'http://www.pathofexile.com/api/public-stash-tabs'
