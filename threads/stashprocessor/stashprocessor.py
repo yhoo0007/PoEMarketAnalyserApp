@@ -96,8 +96,7 @@ class StashProcessor(Thread):
             try:
                 return round(float(amount) * self.currency_exchange.get_exchange_rate(currency, 'chaos'), 2)
             except Exception as e:
-                self.log(e)
-                self.log(note)
+                self.log(f'Error extracting price: {e} note: {note}')
         return None
 
     def item_is_acceptable(self, item, acceptable_items):
