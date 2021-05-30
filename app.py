@@ -109,11 +109,11 @@ def update_fig(*args):
             selectedpoints=selectedpoints,
             customdata=df.index,
             mode='markers',
-            marker={ 'color': 'rgba(255, 0, 0, 0.2)', 'size': 10 },
+            marker={ 'color': 'rgba(255, 0, 0, 0.3)', 'size': 10 },
             unselected={
                 'marker': {
                     'color': 'rgba(0, 116, 217, 0.2)',
-                    'size': 7,
+                    'size': 5,
                 },
             }
         )
