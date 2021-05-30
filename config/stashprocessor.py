@@ -2,8 +2,8 @@ from config.shared import DATA_DIR
 import os
 
 
-NUM_TRACKING_UNIQUES = 30  # number of uniques to scan for
-DUMP_THRESHOLD = 5  # number of items in dict before updating to disk
+NUM_TRACKING_UNIQUES = 50  # number of uniques to scan for
+DUMP_THRESHOLD = 20  # number of items in dict before updating to db
 LISTINGS_DIR = os.path.join(DATA_DIR, 'listings')
 UNIQUES_DATA_FILE = os.path.join(DATA_DIR, 'uniques.json')
 TRACKING_UNIQUES_FILE = os.path.join(DATA_DIR, 'tracking_uniques.json')
