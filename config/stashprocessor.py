@@ -31,6 +31,13 @@ UNIQUES_BLACKLIST = (
     'Transcendent Mind',
     'Unnatural Instinct',
     'Circle of Fear',
+    'Cold Iron Point',
+    'Conqueror\'s Potency',
+    'Darkness Enthroned',
+    'Brutal Restraint',
+    'Pure Talent',
+    'Voices',
+    
 )
 
 PUBLIC_STASH_URL = 'http://www.pathofexile.com/api/public-stash-tabs'
